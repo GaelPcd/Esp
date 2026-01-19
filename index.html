@@ -20,7 +20,7 @@ h1 { margin-top:15px; }
     color: #ff4757;
     font-weight: bold;
 }
-  
+
 #grid {
   display: inline-grid;
   gap: 2px;
@@ -41,9 +41,7 @@ h1 { margin-top:15px; }
 }
 .cell.selected { background:#0a84ff; }
 .cell.found { background:#2ecc71; }
-
-#words { margin-top:15px; }
-.foundWord { text-decoration: line-through; color:#2ecc71; }
+.cell.selectedFound { background:#0a84ff; } /* bleu si sélection d'une lettre trouvée */
 
 button {
   margin-top:15px;
@@ -65,58 +63,55 @@ button {
 </head>
 <body>
 
-<h1>🔎 Encuentra las palabras para construir tu balsa. </h1>
+<h1>🔎 Encuentra las palabras para construir tu balsa.</h1>
 
-<div id="timer" style="font-size:22px; margin-top:10px;"> ⏳ Temps restant : 02:00 </div>
-  
+<div id="timer">⏳ Temps restant : 05:00</div>
+
 <div id="grid"></div>
 
 <button onclick="resetSelection()">❌ Borrar selección</button>
 
-<div id="reward"> conjugad los verbos.<b></b></div>
+<div id="reward">🎉 Has encontrado todas las palabras! Conjugad los verbos.</div>
 
 <script>
-
-// ===== COMPTE À REBOURS =====
-let timeLeft = 300; // 2 minutes en secondes
+// ====== CHRONO ======
+let timeLeft = 300; // 5 minutes
 let timerElement = document.getElementById("timer");
 let gameOver = false;
+let timerInterval;
 
 function startTimer(){
-  let interval = setInterval(()=>{
+  timerInterval = setInterval(()=>{
     if(timeLeft <= 0){
-      clearInterval(interval);
-      timerElement.textContent = "⏰ Temps écoulé !";
+      clearInterval(timerInterval);
+      timerElement.textContent = "⏰ Tiempo transcurrido...";
       gameOver = true;
       return;
     }
-
     timeLeft--;
     let minutes = String(Math.floor(timeLeft / 60)).padStart(2,'0');
     let seconds = String(timeLeft % 60).padStart(2,'0');
-    timerElement.textContent = `⏳ Temps restant : ${minutes}:${seconds}`;
+    timerElement.textContent = `⏳ Tiempo restante : ${minutes}:${seconds}`;
   },1000);
 }
-
 startTimer();
-  
-// ======= PERSONNALISE ICI =======
+
+// ====== GRILLE ET MOTS ======
 const words = ["VELA","CUERDA","MARTILLO","CUCHILLO","BARRIL","MADERA"];
 const gridSize = 12;
-// =================================
 
 const alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 let grid=[...Array(gridSize)].map(()=>Array(gridSize).fill(""));
 
-// Directions autorisées : horizontal, vertical, diagonales — sens direct uniquement
+// directions sens direct uniquement
 const directions = [
-  [0,1],   // gauche → droite
-  [1,0],   // haut → bas
+  [0,1],   // horizontal
+  [1,0],   // vertical
   [1,1],   // diagonale descendante
   [-1,1]   // diagonale montante
 ];
 
-
+// place les mots dans la grille
 function placeWord(word){
   for(let attempts=0; attempts<100; attempts++){
     let dir = directions[Math.floor(Math.random()*directions.length)];
@@ -143,7 +138,6 @@ function placeWord(word){
   return false;
 }
 
-// Place tous les mots
 words.forEach(w=>placeWord(w));
 
 // Remplit le reste aléatoirement
@@ -155,7 +149,7 @@ for(let i=0;i<gridSize;i++){
   }
 }
 
-// ===== Affichage =====
+// ====== AFFICHAGE ======
 const gridDiv=document.getElementById("grid");
 gridDiv.style.gridTemplateColumns = `repeat(${gridSize}, 34px)`;
 
@@ -174,12 +168,12 @@ function renderGrid(){
       div.dataset.row=i;
       div.dataset.col=j;
 
+      // clic
       div.addEventListener("click", ()=>selectCell(div));
-
+      // tactile
       div.addEventListener("touchstart",(e)=>{
         e.preventDefault(); isTouching=true; selectCell(div);
       });
-
       div.addEventListener("touchmove",(e)=>{
         e.preventDefault();
         if(!isTouching) return;
@@ -189,18 +183,15 @@ function renderGrid(){
           selectCell(target);
         }
       });
-
       div.addEventListener("touchend",()=>isTouching=false);
 
       gridDiv.appendChild(div);
     }
   }
 }
-
 renderGrid();
 
-// ===== Sélection logique =====
-
+// ====== LOGIQUE DE SÉLECTION ======
 function isNeighbor(c1,c2){
   let r1=parseInt(c1.dataset.row);
   let c1c=parseInt(c1.dataset.col);
@@ -215,11 +206,13 @@ function getDirection(c1,c2){
 
 function selectCell(cell){
   if(gameOver) return;
-  if(cell.classList.contains("found")) return;
   if(selectedCells.includes(cell)) return;
 
+  const isFound = cell.classList.contains("found");
+
   if(selectedCells.length===0){
-    cell.classList.add("selected");
+    if(isFound) cell.classList.add("selectedFound");
+    else cell.classList.add("selected");
     selectedCells.push(cell);
     currentDirection=null;
     return;
@@ -235,28 +228,34 @@ function selectCell(cell){
     if(newDir[0]!=currentDirection[0] || newDir[1]!=currentDirection[1]) return;
   }
 
-  cell.classList.add("selected");
+  if(isFound) cell.classList.add("selectedFound");
+  else cell.classList.add("selected");
   selectedCells.push(cell);
   checkSelection();
 }
 
 function checkSelection(){
   let word = selectedCells.map(c=>c.textContent).join("");
-  let reversed = word.split("").reverse().join("");
-
-  if(words.includes(word) || words.includes(reversed)){
+  if(words.includes(word)){
     selectedCells.forEach(c=>{
-      c.classList.remove("selected");
+      c.classList.remove("selected", "selectedFound");
       c.classList.add("found");
     });
-    foundWords.push(words.find(w=>w==word || w==reversed));
+    foundWords.push(word);
     resetSelection();
     checkWin();
   }
 }
 
 function resetSelection(){
-  selectedCells.forEach(c=>c.classList.remove("selected"));
+  selectedCells.forEach(c=>{
+    if(c.classList.contains("selectedFound")){
+      c.classList.remove("selectedFound");
+      c.classList.add("found");
+    } else {
+      c.classList.remove("selected");
+    }
+  });
   selectedCells=[];
   currentDirection=null;
 }
@@ -264,13 +263,11 @@ function resetSelection(){
 function checkWin(){
   if(foundWords.length===words.length){
     document.getElementById("reward").style.display="block";
+    gameOver = true;
+    clearInterval(timerInterval);
   }
 }
 </script>
 
 </body>
 </html>
-
-
-
-
