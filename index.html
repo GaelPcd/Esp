@@ -13,7 +13,11 @@ body {
   margin:0;
 }
 h1 { margin-top:15px; }
-
+  
+<div id="timer" style="font-size:22px; margin-top:10px;">
+⏳ Temps restant : 02:00
+</div>
+  
 #grid {
   display: inline-grid;
   gap: 2px;
@@ -67,6 +71,30 @@ button {
 <div id="reward"> Conjugue en pasado simple el verbo "caer".<b></b></div>
 
 <script>
+
+// ===== COMPTE À REBOURS =====
+let timeLeft = 120; // 2 minutes en secondes
+let timerElement = document.getElementById("timer");
+let gameOver = false;
+
+function startTimer(){
+  let interval = setInterval(()=>{
+    if(timeLeft <= 0){
+      clearInterval(interval);
+      timerElement.textContent = "⏰ Temps écoulé !";
+      gameOver = true;
+      return;
+    }
+
+    timeLeft--;
+    let minutes = String(Math.floor(timeLeft / 60)).padStart(2,'0');
+    let seconds = String(timeLeft % 60).padStart(2,'0');
+    timerElement.textContent = `⏳ Temps restant : ${minutes}:${seconds}`;
+  },1000);
+}
+
+startTimer();
+  
 // ======= PERSONNALISE ICI =======
 const words = ["VELA","CUERDA","MARTILLO","CUCHILLO","BARRIL","MADERA"];
 const gridSize = 12;
@@ -181,6 +209,7 @@ function getDirection(c1,c2){
 }
 
 function selectCell(cell){
+  if(gameOver) return;
   if(cell.classList.contains("found")) return;
   if(selectedCells.includes(cell)) return;
 
@@ -236,3 +265,4 @@ function checkWin(){
 
 </body>
 </html>
+
